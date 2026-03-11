@@ -106,6 +106,10 @@ function generateFingerprint(ipInfo) {
     platform: ['Win32', 'MacIntel', 'Linux x86_64'][Math.floor(Math.random() * 3)],
     languages: languages,
     timezone: ipInfo.timezone,
+    fonts: Math.floor(Math.random() * 50) + 100,
+    hardwareNoise: Math.random() > 0.5,
+    webrtc: 'Based on IP',
+    password: 'No',
     geolocation: {
       latitude: ipInfo.latitude,
       longitude: ipInfo.longitude,
@@ -127,15 +131,20 @@ function displayFingerprint(fp) {
   info.innerHTML = `
     <div class="info-item"><span class="label">IP:</span> ${fp.ip}</div>
     <div class="info-item"><span class="label">Location:</span> ${fp.city}, ${fp.country}</div>
-    <div class="info-item"><span class="label">Timezone:</span> ${fp.timezone}</div>
-    <div class="info-item"><span class="label">Languages:</span> ${fp.languages.join(', ')}</div>
     <div class="info-item"><span class="label">User Agent:</span><br>${fp.userAgent}</div>
-    <div class="info-item"><span class="label">Screen:</span> ${fp.screen.width}x${fp.screen.height}</div>
+    <div class="info-item"><span class="label">Operating System:</span> ${fp.platform}</div>
+    <div class="info-item"><span class="label">Fonts:</span> ${fp.fonts}</div>
+    <div class="info-item"><span class="label">Screen Resolution:</span> ${fp.screen.width}x${fp.screen.height}</div>
+    <div class="info-item"><span class="label">Languages:</span> ${fp.languages.join(', ')} (Based on IP)</div>
+    <div class="info-item"><span class="label">Timezone:</span> ${fp.timezone} (Based on IP)</div>
+    <div class="info-item"><span class="label">Geolocation:</span> Based on IP</div>
     <div class="info-item"><span class="label">CPU Cores:</span> ${fp.hardwareConcurrency}</div>
-    <div class="info-item"><span class="label">RAM:</span> ${fp.deviceMemory} GB</div>
+    <div class="info-item"><span class="label">RAM Size:</span> ${fp.deviceMemory} GB</div>
     <div class="info-item"><span class="label">Renderer:</span> ${fp.renderer}</div>
-    <div class="info-item"><span class="label">Platform:</span> ${fp.platform}</div>
-    <div class="info-item"><span class="label">Media Devices:</span> Cameras: ${fp.mediaDevices.videoinput}, Mics: ${fp.mediaDevices.audioinput}, Speakers: ${fp.mediaDevices.audiooutput}</div>
+    <div class="info-item"><span class="label">Hardware Noise:</span> ${fp.hardwareNoise ? 'Yes' : 'No'}</div>
+    <div class="info-item"><span class="label">Media Devices:</span> Cameras: ${fp.mediaDevices.videoinput}, Microphones: ${fp.mediaDevices.audioinput}, Speakers: ${fp.mediaDevices.audiooutput}</div>
+    <div class="info-item"><span class="label">WebRTC:</span> ${fp.webrtc}</div>
+    <div class="info-item"><span class="label">Password:</span> ${fp.password}</div>
   `;
 }
 

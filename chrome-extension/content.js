@@ -125,6 +125,88 @@
           }
           return devices;
         };
+        
+        // Canvas noise injection for hardware noise
+        if (fingerprint.hardwareNoise) {
+          const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+          const originalToBlob = HTMLCanvasElement.prototype.toBlob;
+          const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+          
+          const addNoise = (imageData) => {
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+              data[i] = data[i] + Math.floor(Math.random() * 3) - 1;
+              data[i + 1] = data[i + 1] + Math.floor(Math.random() * 3) - 1;
+              data[i + 2] = data[i + 2] + Math.floor(Math.random() * 3) - 1;
+            }
+            return imageData;
+          };
+          
+          CanvasRenderingContext2D.prototype.getImageData = function(...args) {
+            const imageData = originalGetImageData.apply(this, args);
+            return addNoise(imageData);
+          };
+          
+          HTMLCanvasElement.prototype.toDataURL = function(...args) {
+            const context = this.getContext('2d');
+            if (context) {
+              const imageData = context.getImageData(0, 0, this.width, this.height);
+              addNoise(imageData);
+              context.putImageData(imageData, 0, 0);
+            }
+            return originalToDataURL.apply(this, args);
+          };
+        }
+        
+        // Font spoofing
+        const originalFonts = Object.getOwnPropertyDescriptor(Document.prototype, 'fonts');
+        if (originalFonts) {
+          Object.defineProperty(document, 'fonts', {
+            get: function() {
+              const fontFaceSet = originalFonts.get.call(this);
+              Object.defineProperty(fontFaceSet, 'size', {
+                get: () => fingerprint.fonts
+              });
+              return fontFaceSet;
+            }
+          });
+        }
+        
+        // WebRTC IP leak protection - replace real IP with proxy IP
+        if (fingerprint.webrtc === 'Based on IP') {
+          const originalRTCPeerConnection = window.RTCPeerConnection;
+          window.RTCPeerConnection = function(...args) {
+            const pc = new originalRTCPeerConnection(...args);
+            
+            const originalCreateOffer = pc.createOffer;
+            pc.createOffer = function(...args) {
+              return originalCreateOffer.apply(this, args).then((offer) => {
+                offer.sdp = offer.sdp.replace(/([0-9]{1,3}\.){3}[0-9]{1,3}/g, fingerprint.ip);
+                return offer;
+              });
+            };
+            
+            const originalCreateAnswer = pc.createAnswer;
+            pc.createAnswer = function(...args) {
+              return originalCreateAnswer.apply(this, args).then((answer) => {
+                answer.sdp = answer.sdp.replace(/([0-9]{1,3}\.){3}[0-9]{1,3}/g, fingerprint.ip);
+                return answer;
+              });
+            };
+            
+            return pc;
+          };
+        }
+        
+        // Password credential blocking
+        if (fingerprint.password === 'No' && navigator.credentials) {
+          navigator.credentials.get = function() {
+            return Promise.resolve(null);
+          };
+          navigator.credentials.store = function() {
+            return Promise.resolve();
+          };
+        }
       })();
     `;
     
