@@ -1,16 +1,35 @@
 document.getElementById('generateBtn').addEventListener('click', async () => {
   document.getElementById('generateBtn').disabled = true;
-  document.getElementById('generateBtn').textContent = '⏳ Generating...';
+  document.getElementById('generateBtn').textContent = '⏳ Detecting IP...';
   
   try {
-    const ipInfo = await getIPInfo();
+    // Request IP detection from background script (goes through proxy)
+    const ipResult = await chrome.runtime.sendMessage({ action: 'detectIP' });
+    
+    if (!ipResult.success) {
+      console.warn('IP detection failed, using defaults');
+    }
+    
+    const ipInfo = {
+      country: ipResult.data.country || 'United States',
+      countryCode: ipResult.data.countryCode || 'US',
+      city: ipResult.data.city || 'Unknown',
+      timezone: ipResult.data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      languages: ipResult.data.countryCode || 'en',
+      latitude: ipResult.data.latitude || 40.7128,
+      longitude: ipResult.data.longitude || -74.0060,
+      ip: ipResult.data.ip || 'Unknown'
+    };
+    
+    document.getElementById('generateBtn').textContent = '⏳ Generating...';
+    
     const fingerprint = generateFingerprint(ipInfo);
     
     await chrome.storage.local.set({ fingerprint });
     
     displayFingerprint(fingerprint);
     
-    alert('New fingerprint generated based on your IP! Reload pages to apply changes.');
+    alert('New fingerprint generated! Reload pages to apply changes.');
   } catch (error) {
     alert('Error: ' + error.message);
   } finally {
@@ -20,68 +39,8 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
 });
 
 async function getIPInfo() {
-  // Try simple IP detection first
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch('https://api.ipify.org?format=json', {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    
-    if (response.ok) {
-      const data = await response.json();
-      const ip = data.ip;
-      
-      // Try to get location info
-      try {
-        const locResponse = await fetch(`https://ipapi.co/${ip}/json/`);
-        if (locResponse.ok) {
-          const locData = await locResponse.json();
-          return {
-            country: locData.country_name || 'United States',
-            countryCode: locData.country_code || 'US',
-            city: locData.city || 'Unknown',
-            timezone: locData.timezone || 'America/New_York',
-            languages: locData.country_code || 'en',
-            latitude: locData.latitude || 40.7128,
-            longitude: locData.longitude || -74.0060,
-            ip: ip
-          };
-        }
-      } catch (e) {
-        // Location failed, use IP only with defaults
-        return {
-          country: 'United States',
-          countryCode: 'US',
-          city: 'Unknown',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          languages: 'en',
-          latitude: 40.7128,
-          longitude: -74.0060,
-          ip: ip
-        };
-      }
-    }
-  } catch (error) {
-    console.log('IP detection failed:', error);
-  }
-  
-  // If all fails, use browser timezone to guess location
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const browserLang = navigator.language.split('-')[0];
-  
-  return {
-    country: 'Unknown',
-    countryCode: browserLang.toUpperCase(),
-    city: 'Unknown',
-    timezone: timezone,
-    languages: browserLang,
-    latitude: 0,
-    longitude: 0,
-    ip: 'Unknown'
-  };
+  // This function is no longer used - IP detection moved to background.js
+  return null;
 }
 
 function getLanguagesFromCountry(countryCode, primaryLang) {
