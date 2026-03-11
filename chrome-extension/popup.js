@@ -20,67 +20,68 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
 });
 
 async function getIPInfo() {
-  const apis = [
-    {
-      url: 'https://api.ipify.org?format=json',
-      parser: async (ip) => {
-        // Get IP first, then get location
+  // Try simple IP detection first
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch('https://api.ipify.org?format=json', {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const data = await response.json();
+      const ip = data.ip;
+      
+      // Try to get location info
+      try {
         const locResponse = await fetch(`https://ipapi.co/${ip}/json/`);
-        const locData = await locResponse.json();
+        if (locResponse.ok) {
+          const locData = await locResponse.json();
+          return {
+            country: locData.country_name || 'United States',
+            countryCode: locData.country_code || 'US',
+            city: locData.city || 'Unknown',
+            timezone: locData.timezone || 'America/New_York',
+            languages: locData.country_code || 'en',
+            latitude: locData.latitude || 40.7128,
+            longitude: locData.longitude || -74.0060,
+            ip: ip
+          };
+        }
+      } catch (e) {
+        // Location failed, use IP only with defaults
         return {
-          country: locData.country_name || 'United States',
-          countryCode: locData.country_code || 'US',
-          city: locData.city || 'Unknown',
-          timezone: locData.timezone || 'America/New_York',
-          languages: locData.country_code || 'en',
-          latitude: locData.latitude || 40.7128,
-          longitude: locData.longitude || -74.0060,
+          country: 'United States',
+          countryCode: 'US',
+          city: 'Unknown',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          languages: 'en',
+          latitude: 40.7128,
+          longitude: -74.0060,
           ip: ip
         };
       }
-    },
-    {
-      url: 'https://ipapi.co/json/',
-      parser: async (data) => {
-        return {
-          country: data.country_name || 'United States',
-          countryCode: data.country_code || 'US',
-          city: data.city || 'Unknown',
-          timezone: data.timezone || 'America/New_York',
-          languages: data.country_code || 'en',
-          latitude: data.latitude || 40.7128,
-          longitude: data.longitude || -74.0060,
-          ip: data.ip || 'Unknown'
-        };
-      }
     }
-  ];
-  
-  for (const api of apis) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      
-      const response = await fetch(api.url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) continue;
-      
-      const data = await response.json();
-      
-      if (api.url.includes('ipify')) {
-        return await api.parser(data.ip);
-      } else {
-        return await api.parser(data);
-      }
-    } catch (error) {
-      console.log(`API ${api.url} failed:`, error.message);
-      continue;
-    }
+  } catch (error) {
+    console.log('IP detection failed:', error);
   }
   
-  // If all APIs fail, return defaults
-  throw new Error('Could not detect IP. Check your internet connection.');
+  // If all fails, use browser timezone to guess location
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const browserLang = navigator.language.split('-')[0];
+  
+  return {
+    country: 'Unknown',
+    countryCode: browserLang.toUpperCase(),
+    city: 'Unknown',
+    timezone: timezone,
+    languages: browserLang,
+    latitude: 0,
+    longitude: 0,
+    ip: 'Unknown'
+  };
 }
 
 function getLanguagesFromCountry(countryCode, primaryLang) {
