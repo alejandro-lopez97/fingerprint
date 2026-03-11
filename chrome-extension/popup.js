@@ -107,7 +107,7 @@ function generateFingerprint(ipInfo) {
     languages: languages,
     timezone: ipInfo.timezone,
     fonts: Math.floor(Math.random() * 50) + 100,
-    hardwareNoise: Math.random() > 0.5,
+    hardwareNoise: false,
     webrtc: 'Based on IP',
     password: 'No',
     geolocation: {
@@ -135,15 +135,15 @@ function displayFingerprint(fp) {
     <div class="info-item"><span class="label">Operating System:</span> ${fp.platform}</div>
     <div class="info-item"><span class="label">Fonts:</span> ${fp.fonts}</div>
     <div class="info-item"><span class="label">Screen Resolution:</span> ${fp.screen.width}x${fp.screen.height}</div>
-    <div class="info-item"><span class="label">Languages:</span> ${fp.languages.join(', ')} (Based on IP)</div>
-    <div class="info-item"><span class="label">Timezone:</span> ${fp.timezone} (Based on IP)</div>
-    <div class="info-item"><span class="label">Geolocation:</span> Based on IP</div>
+    <div class="info-item"><span class="label">Languages:</span> ${fp.languages.join(', ')}</div>
+    <div class="info-item"><span class="label">Timezone:</span> ${fp.timezone}</div>
+    <div class="info-item"><span class="label">Geolocation:</span> ${fp.geolocation.latitude.toFixed(4)}, ${fp.geolocation.longitude.toFixed(4)}</div>
     <div class="info-item"><span class="label">CPU Cores:</span> ${fp.hardwareConcurrency}</div>
     <div class="info-item"><span class="label">RAM Size:</span> ${fp.deviceMemory} GB</div>
     <div class="info-item"><span class="label">Renderer:</span> ${fp.renderer}</div>
     <div class="info-item"><span class="label">Hardware Noise:</span> ${fp.hardwareNoise ? 'Yes' : 'No'}</div>
     <div class="info-item"><span class="label">Media Devices:</span> Cameras: ${fp.mediaDevices.videoinput}, Microphones: ${fp.mediaDevices.audioinput}, Speakers: ${fp.mediaDevices.audiooutput}</div>
-    <div class="info-item"><span class="label">WebRTC:</span> ${fp.webrtc}</div>
+    <div class="info-item"><span class="label">WebRTC:</span> ${fp.ip}</div>
     <div class="info-item"><span class="label">Password:</span> ${fp.password}</div>
   `;
 }
