@@ -21,31 +21,57 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
 
 async function getIPInfo() {
   try {
-    const response = await fetch('https://ipapi.co/json/');
-    if (!response.ok) throw new Error('Failed to fetch IP info');
-    const data = await response.json();
+    // Try multiple IP detection services to ensure proxy IP is detected
+    let data;
+    
+    try {
+      const response = await fetch('https://ipapi.co/json/');
+      if (response.ok) {
+        data = await response.json();
+      }
+    } catch (e) {
+      console.log('ipapi.co failed, trying alternative...');
+    }
+    
+    // Fallback to ip-api.com if first service fails
+    if (!data || !data.ip) {
+      try {
+        const response = await fetch('http://ip-api.com/json/');
+        if (response.ok) {
+          const ipApiData = await response.json();
+          data = {
+            ip: ipApiData.query,
+            country_name: ipApiData.country,
+            country_code: ipApiData.countryCode,
+            city: ipApiData.city,
+            timezone: ipApiData.timezone,
+            languages: ipApiData.countryCode === 'ES' ? 'es' : 'en',
+            latitude: ipApiData.lat,
+            longitude: ipApiData.lon
+          };
+        }
+      } catch (e) {
+        console.log('ip-api.com also failed');
+      }
+    }
+    
+    if (!data || !data.ip) {
+      throw new Error('All IP detection services failed');
+    }
+    
     return {
-      country: data.country_name || 'United States',
-      countryCode: data.country_code || 'US',
+      country: data.country_name || data.country || 'United States',
+      countryCode: data.country_code || data.countryCode || 'US',
       city: data.city || 'New York',
       timezone: data.timezone || 'America/New_York',
-      languages: data.languages ? data.languages.split(',')[0] : 'en',
-      latitude: data.latitude || 40.7128,
-      longitude: data.longitude || -74.0060,
-      ip: data.ip || 'Unknown'
+      languages: data.languages ? data.languages.split(',')[0] : (data.countryCode === 'ES' ? 'es' : 'en'),
+      latitude: data.latitude || data.lat || 40.7128,
+      longitude: data.longitude || data.lon || -74.0060,
+      ip: data.ip || data.query || 'Unknown'
     };
   } catch (error) {
-    console.error('IP lookup failed, using defaults:', error);
-    return {
-      country: 'United States',
-      countryCode: 'US',
-      city: 'New York',
-      timezone: 'America/New_York',
-      languages: 'en',
-      latitude: 40.7128,
-      longitude: -74.0060,
-      ip: 'Unknown'
-    };
+    console.error('IP lookup failed:', error);
+    throw error;
   }
 }
 
@@ -57,7 +83,7 @@ function getLanguagesFromCountry(countryCode, primaryLang) {
     'AU': ['en-AU', 'en'],
     'DE': ['de-DE', 'de', 'en'],
     'FR': ['fr-FR', 'fr', 'en'],
-    'ES': ['es-ES', 'es', 'en'],
+    'ES': ['es-ES', 'es'],
     'IT': ['it-IT', 'it', 'en'],
     'JP': ['ja-JP', 'ja', 'en'],
     'CN': ['zh-CN', 'zh', 'en'],
@@ -65,7 +91,19 @@ function getLanguagesFromCountry(countryCode, primaryLang) {
     'BR': ['pt-BR', 'pt', 'en'],
     'RU': ['ru-RU', 'ru', 'en'],
     'IN': ['en-IN', 'hi-IN', 'en'],
-    'MX': ['es-MX', 'es', 'en']
+    'MX': ['es-MX', 'es', 'en'],
+    'NL': ['nl-NL', 'nl', 'en'],
+    'PL': ['pl-PL', 'pl', 'en'],
+    'SE': ['sv-SE', 'sv', 'en'],
+    'NO': ['nb-NO', 'nb', 'en'],
+    'DK': ['da-DK', 'da', 'en'],
+    'FI': ['fi-FI', 'fi', 'en'],
+    'PT': ['pt-PT', 'pt', 'en'],
+    'GR': ['el-GR', 'el', 'en'],
+    'TR': ['tr-TR', 'tr', 'en'],
+    'AR': ['es-AR', 'es', 'en'],
+    'CL': ['es-CL', 'es', 'en'],
+    'CO': ['es-CO', 'es', 'en']
   };
   
   return langMap[countryCode] || [`${primaryLang}-${countryCode}`, primaryLang, 'en'];
