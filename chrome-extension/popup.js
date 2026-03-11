@@ -20,38 +20,67 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
 });
 
 async function getIPInfo() {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-  
-  try {
-    const response = await fetch('http://ip-api.com/json/', {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) throw new Error('Failed to fetch IP info');
-    
-    const data = await response.json();
-    
-    if (data.status === 'fail') {
-      throw new Error(data.message || 'IP lookup failed');
+  const apis = [
+    {
+      url: 'https://api.ipify.org?format=json',
+      parser: async (ip) => {
+        // Get IP first, then get location
+        const locResponse = await fetch(`https://ipapi.co/${ip}/json/`);
+        const locData = await locResponse.json();
+        return {
+          country: locData.country_name || 'United States',
+          countryCode: locData.country_code || 'US',
+          city: locData.city || 'Unknown',
+          timezone: locData.timezone || 'America/New_York',
+          languages: locData.country_code || 'en',
+          latitude: locData.latitude || 40.7128,
+          longitude: locData.longitude || -74.0060,
+          ip: ip
+        };
+      }
+    },
+    {
+      url: 'https://ipapi.co/json/',
+      parser: async (data) => {
+        return {
+          country: data.country_name || 'United States',
+          countryCode: data.country_code || 'US',
+          city: data.city || 'Unknown',
+          timezone: data.timezone || 'America/New_York',
+          languages: data.country_code || 'en',
+          latitude: data.latitude || 40.7128,
+          longitude: data.longitude || -74.0060,
+          ip: data.ip || 'Unknown'
+        };
+      }
     }
-    
-    return {
-      country: data.country || 'United States',
-      countryCode: data.countryCode || 'US',
-      city: data.city || 'Unknown',
-      timezone: data.timezone || 'America/New_York',
-      languages: data.countryCode || 'en',
-      latitude: data.lat || 40.7128,
-      longitude: data.lon || -74.0060,
-      ip: data.query || 'Unknown'
-    };
-  } catch (error) {
-    clearTimeout(timeoutId);
-    console.error('IP lookup failed:', error);
-    throw new Error('Could not detect IP. Check your internet connection.');
+  ];
+  
+  for (const api of apis) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      const response = await fetch(api.url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) continue;
+      
+      const data = await response.json();
+      
+      if (api.url.includes('ipify')) {
+        return await api.parser(data.ip);
+      } else {
+        return await api.parser(data);
+      }
+    } catch (error) {
+      console.log(`API ${api.url} failed:`, error.message);
+      continue;
+    }
   }
+  
+  // If all APIs fail, return defaults
+  throw new Error('Could not detect IP. Check your internet connection.');
 }
 
 function getLanguagesFromCountry(countryCode, primaryLang) {
@@ -112,13 +141,31 @@ function generateFingerprint(ipInfo) {
   
   const resolution = resolutions[Math.floor(Math.random() * resolutions.length)];
   const languages = getLanguagesFromCountry(ipInfo.countryCode, ipInfo.languages);
+  const renderer = renderers[Math.floor(Math.random() * renderers.length)];
+  
+  // Generate WebGL parameters
+  const webglParams = {
+    renderer: renderer,
+    vendor: 'Google Inc. (Intel)',
+    shadingLanguageVersion: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)',
+    maxTextureSize: [4096, 8192, 16384][Math.floor(Math.random() * 3)],
+    maxVertexAttribs: 16,
+    maxVaryingVectors: 30,
+    maxVertexTextureImageUnits: 16,
+    maxCombinedTextureImageUnits: 32,
+    maxFragmentUniformVectors: 1024,
+    maxVertexUniformVectors: 1024
+  };
+  
+  // Generate Canvas noise seed
+  const canvasNoise = Math.random() * 0.0001;
   
   return {
     userAgent: userAgents[Math.floor(Math.random() * userAgents.length)],
     screen: resolution,
     hardwareConcurrency: [2, 4, 8, 16][Math.floor(Math.random() * 4)],
     deviceMemory: [4, 8, 16][Math.floor(Math.random() * 3)],
-    renderer: renderers[Math.floor(Math.random() * renderers.length)],
+    renderer: renderer,
     vendor: 'Google Inc.',
     platform: ['Win32', 'MacIntel', 'Linux x86_64'][Math.floor(Math.random() * 3)],
     languages: languages,
@@ -127,6 +174,8 @@ function generateFingerprint(ipInfo) {
     hardwareNoise: false,
     webrtc: 'Based on IP',
     password: 'No',
+    webgl: webglParams,
+    canvasNoise: canvasNoise,
     geolocation: {
       latitude: ipInfo.latitude,
       longitude: ipInfo.longitude,

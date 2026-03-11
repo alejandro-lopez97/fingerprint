@@ -76,12 +76,42 @@
         const getParameterProxyHandler = {
           apply: function(target, thisArg, args) {
             const param = args[0];
-            if (param === 'UNMASKED_RENDERER_WEBGL') {
-              return fingerprint.renderer;
+            const gl = thisArg;
+            
+            // WebGL Renderer and Vendor
+            if (param === 37445 || param === gl.UNMASKED_RENDERER_WEBGL) {
+              return fingerprint.webgl.renderer;
             }
-            if (param === 'UNMASKED_VENDOR_WEBGL') {
-              return fingerprint.vendor;
+            if (param === 37446 || param === gl.UNMASKED_VENDOR_WEBGL) {
+              return fingerprint.webgl.vendor;
             }
+            
+            // Additional WebGL parameters
+            if (param === gl.SHADING_LANGUAGE_VERSION) {
+              return fingerprint.webgl.shadingLanguageVersion;
+            }
+            if (param === gl.MAX_TEXTURE_SIZE) {
+              return fingerprint.webgl.maxTextureSize;
+            }
+            if (param === gl.MAX_VERTEX_ATTRIBS) {
+              return fingerprint.webgl.maxVertexAttribs;
+            }
+            if (param === gl.MAX_VARYING_VECTORS) {
+              return fingerprint.webgl.maxVaryingVectors;
+            }
+            if (param === gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) {
+              return fingerprint.webgl.maxVertexTextureImageUnits;
+            }
+            if (param === gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) {
+              return fingerprint.webgl.maxCombinedTextureImageUnits;
+            }
+            if (param === gl.MAX_FRAGMENT_UNIFORM_VECTORS) {
+              return fingerprint.webgl.maxFragmentUniformVectors;
+            }
+            if (param === gl.MAX_VERTEX_UNIFORM_VECTORS) {
+              return fingerprint.webgl.maxVertexUniformVectors;
+            }
+            
             return target.apply(thisArg, args);
           }
         };
@@ -93,6 +123,22 @@
             const originalGetParameter = context.getParameter;
             context.getParameter = new Proxy(originalGetParameter, getParameterProxyHandler);
           }
+          
+          // Canvas 2D noise injection
+          if (context && type === '2d' && fingerprint.canvasNoise) {
+            const originalGetImageData = context.getImageData;
+            context.getImageData = function(...args) {
+              const imageData = originalGetImageData.apply(this, args);
+              const data = imageData.data;
+              for (let i = 0; i < data.length; i += 4) {
+                data[i] = data[i] + fingerprint.canvasNoise * (Math.random() - 0.5) * 255;
+                data[i + 1] = data[i + 1] + fingerprint.canvasNoise * (Math.random() - 0.5) * 255;
+                data[i + 2] = data[i + 2] + fingerprint.canvasNoise * (Math.random() - 0.5) * 255;
+              }
+              return imageData;
+            };
+          }
+          
           return context;
         };
         
