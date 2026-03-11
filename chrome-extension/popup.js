@@ -20,58 +20,37 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
 });
 
 async function getIPInfo() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+  
   try {
-    // Try multiple IP detection services to ensure proxy IP is detected
-    let data;
+    const response = await fetch('http://ip-api.com/json/', {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
     
-    try {
-      const response = await fetch('https://ipapi.co/json/');
-      if (response.ok) {
-        data = await response.json();
-      }
-    } catch (e) {
-      console.log('ipapi.co failed, trying alternative...');
-    }
+    if (!response.ok) throw new Error('Failed to fetch IP info');
     
-    // Fallback to ip-api.com if first service fails
-    if (!data || !data.ip) {
-      try {
-        const response = await fetch('http://ip-api.com/json/');
-        if (response.ok) {
-          const ipApiData = await response.json();
-          data = {
-            ip: ipApiData.query,
-            country_name: ipApiData.country,
-            country_code: ipApiData.countryCode,
-            city: ipApiData.city,
-            timezone: ipApiData.timezone,
-            languages: ipApiData.countryCode === 'ES' ? 'es' : 'en',
-            latitude: ipApiData.lat,
-            longitude: ipApiData.lon
-          };
-        }
-      } catch (e) {
-        console.log('ip-api.com also failed');
-      }
-    }
+    const data = await response.json();
     
-    if (!data || !data.ip) {
-      throw new Error('All IP detection services failed');
+    if (data.status === 'fail') {
+      throw new Error(data.message || 'IP lookup failed');
     }
     
     return {
-      country: data.country_name || data.country || 'United States',
-      countryCode: data.country_code || data.countryCode || 'US',
-      city: data.city || 'New York',
+      country: data.country || 'United States',
+      countryCode: data.countryCode || 'US',
+      city: data.city || 'Unknown',
       timezone: data.timezone || 'America/New_York',
-      languages: data.languages ? data.languages.split(',')[0] : (data.countryCode === 'ES' ? 'es' : 'en'),
-      latitude: data.latitude || data.lat || 40.7128,
-      longitude: data.longitude || data.lon || -74.0060,
-      ip: data.ip || data.query || 'Unknown'
+      languages: data.countryCode || 'en',
+      latitude: data.lat || 40.7128,
+      longitude: data.lon || -74.0060,
+      ip: data.query || 'Unknown'
     };
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error('IP lookup failed:', error);
-    throw error;
+    throw new Error('Could not detect IP. Check your internet connection.');
   }
 }
 
