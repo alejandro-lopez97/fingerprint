@@ -14,6 +14,20 @@ async function detectIPAddress() {
   // Try multiple free APIs in order - prioritize accuracy
   const apis = [
     {
+      name: 'ipwhois.app',
+      url: 'http://ipwho.is/',
+      parse: (data) => ({
+        ip: data.ip,
+        country: data.country,
+        countryCode: data.country_code,
+        city: data.city,
+        region: data.region,
+        timezone: data.timezone.id,
+        latitude: data.latitude,
+        longitude: data.longitude
+      })
+    },
+    {
       name: 'ipapi.co',
       url: 'https://ipapi.co/json/',
       parse: (data) => ({
@@ -42,23 +56,25 @@ async function detectIPAddress() {
       })
     },
     {
-      name: 'ipify + ipapi.co',
+      name: 'ipify + ipwho.is',
       url: 'https://api.ipify.org?format=json',
       parse: async (data) => {
         const ip = data.ip;
         try {
-          const locRes = await fetch(`https://ipapi.co/${ip}/json/`);
+          const locRes = await fetch(`http://ipwho.is/${ip}`);
           const locData = await locRes.json();
-          return {
-            ip: ip,
-            country: locData.country_name,
-            countryCode: locData.country_code,
-            city: locData.city,
-            region: locData.region,
-            timezone: locData.timezone,
-            latitude: locData.latitude,
-            longitude: locData.longitude
-          };
+          if (locData.success) {
+            return {
+              ip: ip,
+              country: locData.country,
+              countryCode: locData.country_code,
+              city: locData.city,
+              region: locData.region,
+              timezone: locData.timezone.id,
+              latitude: locData.latitude,
+              longitude: locData.longitude
+            };
+          }
         } catch {
           return null;
         }
@@ -82,7 +98,7 @@ async function detectIPAddress() {
       const data = await response.json();
       const result = await api.parse(data);
       
-      if (result && result.ip && result.ip !== 'Unknown') {
+      if (result && result.ip && result.ip !== 'Unknown' && result.city && result.city !== 'Unknown') {
         console.log(`[IP Detection] ✓ Success with ${api.name}:`, result);
         return { success: true, data: result, source: api.name };
       }
