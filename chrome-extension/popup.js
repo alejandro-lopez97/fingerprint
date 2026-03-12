@@ -156,7 +156,7 @@ function displayFingerprint(fp) {
   const info = document.getElementById('fingerprintInfo');
   info.innerHTML = `
     <div class="info-item"><span class="label">IP:</span> ${fp.ip}</div>
-    <div class="info-item"><span class="label">Location:</span> ${fp.city}, ${fp.country}</div>
+    <div class="info-item"><span class="label">Location:</span> Vigo, ${fp.country}</div>
     <div class="info-item"><span class="label">User Agent:</span><br>${fp.userAgent}</div>
     <div class="info-item"><span class="label">Operating System:</span> ${fp.platform}</div>
     <div class="info-item"><span class="label">Fonts:</span> ${fp.fonts}</div>
